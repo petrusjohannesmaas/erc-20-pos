@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { productService, transactionService } from '../services/api';
 import Navbar from '../components/Navbar';
-import { Search, Plus, Trash2, CheckCircle, Package } from 'lucide-react';
+import { Search, Plus, Trash2, CheckCircle, Package, AlertTriangle } from 'lucide-react';
 
 interface CartItem {
     productId: string;
     name: string;
     price: number;
     quantity: number;
+    stockQuantity: number;
 }
 
 export default function PosScreen() {
@@ -40,6 +41,8 @@ export default function PosScreen() {
     const cashNum = parseFloat(cashReceived) || 0;
     const change = Math.max(0, cashNum - total);
 
+    const [lowStockItems, setLowStockItems] = useState<Record<string, number>>({});
+
     const handleScan = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!barcode.trim()) return;
@@ -47,6 +50,23 @@ export default function PosScreen() {
         try {
             const product = await productService.getByBarcode(barcode.trim());
             setError('');
+
+            if (product.stockQuantity <= 0) {
+                setError(`"${product.name}" is out of stock`);
+                setBarcode('');
+                barcodeInputRef.current?.focus();
+                return;
+            }
+
+            const existing = cart.find(item => item.productId === product._id);
+            const currentQty = existing ? existing.quantity : 0;
+
+            if (currentQty + 1 > product.stockQuantity) {
+                setError(`Only ${product.stockQuantity} of "${product.name}" in stock`);
+                setBarcode('');
+                barcodeInputRef.current?.focus();
+                return;
+            }
 
             setCart(prev => {
                 const existing = prev.find(item => item.productId === product._id);
@@ -61,9 +81,15 @@ export default function PosScreen() {
                     productId: product._id,
                     name: product.name,
                     price: product.price,
-                    quantity: 1
+                    quantity: 1,
+                    stockQuantity: product.stockQuantity
                 }];
             });
+
+            if (product.stockQuantity <= (product.reorderLevel || 10)) {
+                setLowStockItems(prev => ({ ...prev, [product._id]: product.stockQuantity }));
+            }
+
             setBarcode('');
         } catch (err: any) {
             setError('Product not found or error occurred.');
@@ -101,8 +127,8 @@ export default function PosScreen() {
 
             setReceiptMode(true);
             setShowCheckout(false);
-        } catch (err) {
-            setError('Failed to process transaction');
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Failed to process transaction');
         }
     };
 
@@ -111,6 +137,7 @@ export default function PosScreen() {
         setCashReceived('');
         setReceiptMode(false);
         setError('');
+        setLowStockItems({});
     };
 
     if (!user) return null;
@@ -144,6 +171,13 @@ export default function PosScreen() {
                         </div>
                     )}
 
+                    {Object.keys(lowStockItems).length > 0 && (
+                        <div className="bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 px-4 py-3 rounded-xl mb-4 flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5 shrink-0" />
+                            <span>Some items are low on stock. Check admin panel.</span>
+                        </div>
+                    )}
+
                     <div className="flex-1 bg-gray-800 border border-gray-700 rounded-2xl p-6 overflow-hidden flex flex-col">
                         <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                             <Package className="w-6 h-6 text-gray-400" />
@@ -163,6 +197,12 @@ export default function PosScreen() {
                                         <div>
                                             <p className="font-bold text-lg">{item.name}</p>
                                             <p className="text-gray-400 text-sm">₹{item.price.toFixed(2)} x {item.quantity}</p>
+                                            {lowStockItems[item.productId] && (
+                                                <p className="text-yellow-500 text-xs mt-1 flex items-center gap-1">
+                                                    <AlertTriangle className="w-3 h-3" />
+                                                    Stock: {item.stockQuantity - item.quantity} left
+                                                </p>
+                                            )}
                                         </div>
                                         <p className="font-bold text-xl">₹{(item.price * item.quantity).toFixed(2)}</p>
                                     </div>

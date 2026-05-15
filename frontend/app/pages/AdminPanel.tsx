@@ -15,6 +15,8 @@ export default function AdminPanel() {
     const [productName, setProductName] = useState('');
     const [productBarcode, setProductBarcode] = useState('');
     const [productPrice, setProductPrice] = useState('');
+    const [productStock, setProductStock] = useState('');
+    const [productReorder, setProductReorder] = useState('');
 
     // User Form
     const [userName, setUserName] = useState('');
@@ -37,10 +39,12 @@ export default function AdminPanel() {
             await productService.create({
                 name: productName,
                 barcode: productBarcode,
-                price: parseFloat(productPrice)
+                price: parseFloat(productPrice),
+                stockQuantity: parseInt(productStock) || 0,
+                reorderLevel: parseInt(productReorder) || 10,
             });
             setMessage({ type: 'success', text: 'Product created successfully' });
-            setProductName(''); setProductBarcode(''); setProductPrice('');
+            setProductName(''); setProductBarcode(''); setProductPrice(''); setProductStock(''); setProductReorder('');
         } catch (err: any) {
             setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to create product' });
         }
@@ -136,6 +140,31 @@ export default function AdminPanel() {
                                     onChange={e => setProductPrice(e.target.value)}
                                     className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
                                     placeholder="0.00"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-gray-400 mb-1 text-sm">Stock Quantity</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    required
+                                    value={productStock}
+                                    onChange={e => setProductStock(e.target.value)}
+                                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                                    placeholder="0"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-gray-400 mb-1 text-sm">Reorder Level</label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={productReorder}
+                                    onChange={e => setProductReorder(e.target.value)}
+                                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500"
+                                    placeholder="10"
                                 />
                             </div>
 

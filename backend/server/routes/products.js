@@ -28,7 +28,7 @@ router.get('/barcode/:barcode', async (req, res) => {
 // POST new product
 router.post('/', async (req, res) => {
     try {
-        const { name, barcode, price } = req.body;
+        const { name, barcode, price, stockQuantity, reorderLevel } = req.body;
 
         const productExists = await Product.findOne({ barcode });
         if (productExists) {
@@ -38,7 +38,9 @@ router.post('/', async (req, res) => {
         const product = await Product.create({
             name,
             barcode,
-            price
+            price,
+            stockQuantity: stockQuantity ?? 0,
+            reorderLevel: reorderLevel ?? 10,
         });
 
         res.status(201).json(product);

@@ -20,7 +20,7 @@ export const productService = {
         const response = await api.get(`/products/barcode/${barcode}`);
         return response.data;
     },
-    create: async (data: { name: string; barcode: string; price: number }) => {
+    create: async (data: { name: string; barcode: string; price: number; stockQuantity?: number; reorderLevel?: number }) => {
         const response = await api.post('/products', data);
         return response.data;
     },
