@@ -44,7 +44,3 @@ A self-hostable PoS that can process transactions using ERC-20 tokens
 - No payment gateway or webhooks — the chain is the gateway
 - No offline journaling — if the node is down, payment can't proceed anyway
 - Rollback is replaced by on-chain finality — you wait for confirmation before committing locally
-
----
-
-Want to move to architecture and stack decisions now?
