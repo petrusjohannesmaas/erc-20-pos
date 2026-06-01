@@ -1,74 +1,50 @@
-# Ethereum Point of Sale System
+# ERC-20 Point of Sale System
 
 ## Vision
-A self-hostable PoS that can run either as a Trad-fi or Defi commerce solution using Docker Compose.
+A self-hostable PoS that can process transactions using ERC-20 tokens
 
-## Current Progress
-Currently, the project implements a **cash-based Point of Sale (POS)** system using the **MERN stack** for GUI (MongoDB, Express, React, Node.js) with **n8n workflows** for notifications + reporting automations.  
-The schema design is documented in [`cash-pos-schema.md`](./cash-pos-schema.md).
+**1. Cart & Itemization**
+- Map SKUs to qty, price, modifiers
+- Prices stored and calculated in token base units (wei-equivalent integers, no floats)
+- No tax layer needed unless you add it — simplify for now
 
----
+**2. Payment Request**
+- POS generates a payment request: `{ merchant_address, token_contract, amount, cart_hash, nonce }`
+- Rendered as QR code or deep link (EIP-681 URI format)
+- Customer wallet parses and prompts a `transfer()` call — no custom contract needed at this stage
 
-## 🎯 MVP Milestones
-- Build a **simple POS MVP** with MongoDB as the datastore.
-- Use **n8n workflows** to handle queries, inserts, and reporting.
-- Provide a **React (Vite + Router v7)** frontend for cashiers and admins.
-- Support **receipt-based transactions** and **daily cash sessions**.
-- Prepare the system for **future blockchain payment integration**.
+**3. Transaction State Machine**
+- States: `Draft → Requested → Pending (mempool) → Confirmed → Failed`
+- POS polls or subscribes to `Transfer` events filtered by `to=merchant_address` and `amount` match
+- Nonce in the request ties the on-chain event back to the cart
 
----
+**4. Immutable Ledger**
+- Append-only local record: cart snapshot, tx hash, block number, timestamp, token amount
+- The blockchain is your source of truth — local ledger is your queryable index
 
-## 📂 Collections Overview
-The schema defines the following MongoDB collections:
-
-- **categories** → Group products for UI display  
-- **products** → Inventory items with barcode, SKU, stock, and pricing  
-- **users** → Staff members (cashiers/admin)  
-- **sales** → Completed transactions with embedded line items  
-- **cash_sessions** → Cashier shifts with opening/closing balances  
-
-See [`cash-pos-schema.md`](./cash-pos-schema.md) for full details.
+**5. Receipt Generation**
+- Digital only — JSON payload with tx hash, block explorer link, items, amount
+- No ESC/POS needed unless you want it later
 
 ---
 
-## 🛠 Tech Stack
-- **Frontend**: React + Vite + Router v7
-- **Backend**: Node.js + Express
-- **Database**: MongoDB (Dockerized)
-- **Automation**: n8n (MongoDB nodes + webhooks)
-- **Containerization**: Docker Compose
+**Transaction Lifecycle**
+
+`Draft` → build cart
+`Requested` → generate EIP-681 URI, display QR
+`Pending` → customer signs and broadcasts
+`Confirmed` → Transfer event received, local ledger written
+`Archived` → receipt issued
 
 ---
 
-## 🚀 Getting Started
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/petrusjohannesmaas/eth-pos.git
-   cd eth-pos
-   ```
-2. Run with Docker Compose:
-   ```bash
-   docker compose up --build
-   ```
-   - Frontend: http://localhost:3000  
-   - Backend API: http://localhost:5000  
-   - MongoDB: localhost:27017  
-   - n8n UI: http://localhost:5678  
+**What drops out vs the traditional version**
+
+- No cash/change logic
+- No payment gateway or webhooks — the chain is the gateway
+- No offline journaling — if the node is down, payment can't proceed anyway
+- Rollback is replaced by on-chain finality — you wait for confirmation before committing locally
 
 ---
 
-## 📌 Core Operations (via n8n)
-- Handle notifications
-- Handle receipts
-- Open/close cash sessions  
-- Generate daily sales reports  
-
----
-
-## 🔮 Future Extensions
-- Blockchain payments integration  
-- Card payments and refunds  
-- Customer profiles and loyalty   
-- Advanced reporting and analytics  
-
----
+Want to move to architecture and stack decisions now?
